@@ -58,19 +58,36 @@ class TaskListViewController: UITableViewController {
         showAlert(with: "New Task", and: "What do you want to do?")
     }
     
-    private func showAlert(with title: String, and massage: String) {
-        let alert = UIAlertController(title: title, message: massage, preferredStyle: .alert)
+    private func showAlert(with title: String, and message: String, taskToEdit: Task? = nil) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        
+      
+            alert.addTextField { textField in
+                textField.text = taskToEdit?.name
+                textField.placeholder = "Task Name"
+            }
+        
         
         let saveAction = UIAlertAction(title: "Save", style: .default) { _ in
             guard let task = alert.textFields?.first?.text, !task.isEmpty else { return }
             self.save(task)
         }
         
-        let cancelAction = UIAlertAction(title: "Cancel", style: .destructive)
+        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
+            if let taskToEdit = taskToEdit {
+                self.delete(taskToEdit)
+            }
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
         
         alert.addAction(saveAction)
+        
+        if taskToEdit != nil {
+            alert.addAction(deleteAction)
+        }
+        
         alert.addAction(cancelAction)
-        alert.addTextField()
         
         present(alert, animated: true)
     }
@@ -92,6 +109,21 @@ extension TaskListViewController {
         
         do {
             try viewContext.save()
+        } catch let error {
+            print(error.localizedDescription)
+        }
+    }
+    
+    private func delete(_ task: Task) {
+        viewContext.delete(task)
+        
+        do {
+            try viewContext.save()
+            if let index = tasks.firstIndex(of: task) {
+                tasks.remove(at: index)
+                let indexPath = IndexPath(row: index, section: 0)
+                tableView.deleteRows(at: [indexPath], with: .automatic)
+            }
         } catch let error {
             print(error.localizedDescription)
         }
@@ -123,6 +155,11 @@ extension TaskListViewController {
         let task = tasks[indexPath.row]
         cell.textLabel?.text = task.name
         return cell
+    }
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let task = tasks[indexPath.row]
+        showAlert(with: "Edit Task", and: "Would you like to delete this task?", taskToEdit: task)
     }
     
 }
